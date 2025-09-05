@@ -56,7 +56,7 @@ class YouTubePlaylist extends StatelessComponent {
           [
             div(
               classes: 'flex-1 overflow-y-auto custom-scrollbar',
-              styles: Styles(
+              styles: const Styles(
                 raw: {
                   'max-height': 'calc(70vh - 200px)', // Responsive height calculation
                   'min-height': '200px',
