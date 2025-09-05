@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="scaffolded-by" content="https://github.com/schultek/jaspr">
+
+        <title>lofime</title>
+          <link rel="stylesheet" href="new_styles.css">
+        <link rel="stylesheet" href="styles.css">
+
+        <!-- 1. Load our custom YouTube player API -->
+        <!-- This script will handle loading the YouTube IFrame Player API itself. -->
+        <script  src="yt_player_api.js"></script>
+
+        <!--
+            Loads and runs the compiled 'main.dart' file,
+            can be changed to any other .dart file inside /web.
+        -->
+        <script defer src="main.dart.js"></script>
+    </head>
+    <body>
+        <!-- 2. Add a hidden container for the YouTube player. -->
+        <!-- The yt_player_api.js will create the player inside this div. -->
+        <div id="youtube-player-container" style="position: absolute; top: -9999px; left: -9999px;"></div>
+    </body>
+</html>

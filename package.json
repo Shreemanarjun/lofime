@@ -1,0 +1,15 @@
+{
+  "name": "lofime-js-interop",
+  "version": "1.0.0",
+  "description": "JavaScript dependencies and build scripts for the lofime project.",
+  "private": true,
+  "scripts": {
+    "build": "esbuild web/yt_player_api.js --bundle --outfile=web/yt_player_api.js --format=iife --allow-overwrite --sourcemap"
+  },
+  "dependencies": {
+    "youtube-player": "^5.6.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.20.0"
+  }
+}
