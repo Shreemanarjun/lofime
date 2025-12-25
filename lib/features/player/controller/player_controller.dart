@@ -37,6 +37,18 @@ class YouTubePlayerController extends Notifier<YouTubePlayerState> {
     // Load favorites from local storage
     Future.microtask(() => _loadFavorites());
 
+    // Listen for storage changes to sync tabs
+    final storageHandler = (web.Event e) {
+      final event = e as web.StorageEvent;
+      if (event.key == _favoritesKey) {
+        _talker.info('Storage changed in another tab, reloading favorites...');
+        _loadFavorites();
+      }
+    }.toJS;
+
+    web.window.addEventListener('storage', storageHandler);
+    ref.onDispose(() => web.window.removeEventListener('storage', storageHandler));
+
     return YouTubePlayerState(
       playlist: initialPlaylistAsync.when(
         data: (playlist) => playlist,
@@ -54,32 +66,57 @@ class YouTubePlayerController extends Notifier<YouTubePlayerState> {
     try {
       final saved = web.window.localStorage.getItem(_favoritesKey);
       if (saved != null) {
+        _talker.info('Found saved favorites: $saved');
         final List<dynamic> json = jsonDecode(saved);
-        final favs = json.map((e) => YouTubeTrackMapper.fromMap(e as Map<String, dynamic>)).toList();
-        state = state.copyWith(favorites: favs);
-        _talker.info('Loaded ${favs.length} favorites from local storage');
+        final favs = json
+            .map((e) {
+              try {
+                return YouTubeTrackMapper.fromMap(Map<String, dynamic>.from(e as Map));
+              } catch (e) {
+                _talker.error('Error parsing track', e);
+                return null;
+              }
+            })
+            .whereType<YouTubeTrack>()
+            .toList();
+
+        if (favs.isNotEmpty) {
+          state = state.copyWith(favorites: favs);
+          _talker.info('Successfully loaded ${favs.length} favorites');
+        }
+      } else {
+        _talker.info('No saved favorites found');
       }
-    } catch (e) {
-      _talker.error('Failed to load favorites', e);
+    } catch (e, st) {
+      _talker.error('Failed to load favorites', e, st);
     }
   }
 
   void _saveFavorites() {
     try {
+      if (state.favorites.isEmpty) {
+        // Option: clear storage if empty, or just save empty list
+        // web.window.localStorage.removeItem(_favoritesKey);
+      }
       final json = state.favorites.map((e) => e.toMap()).toList();
-      web.window.localStorage.setItem(_favoritesKey, jsonEncode(json));
-    } catch (e) {
-      _talker.error('Failed to save favorites', e);
+      final jsonString = jsonEncode(json);
+      web.window.localStorage.setItem(_favoritesKey, jsonString);
+      _talker.info('Saved ${state.favorites.length} favorites');
+    } catch (e, st) {
+      _talker.error('Failed to save favorites', e, st);
     }
   }
 
   void toggleFavorite(YouTubeTrack track) {
+    _talker.info('toggleFavorite called for ${track.title} (${track.youtubeId})');
     final isFav = state.isFavorite(track.youtubeId);
     if (isFav) {
+      _talker.info('Removing from favorites');
       state = state.copyWith(
         favorites: state.favorites.where((t) => t.youtubeId != track.youtubeId).toList(),
       );
     } else {
+      _talker.info('Adding to favorites');
       state = state.copyWith(
         favorites: [...state.favorites, track],
       );

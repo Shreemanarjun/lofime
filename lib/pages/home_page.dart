@@ -46,7 +46,7 @@ class PlayerComponent extends StatelessComponent {
 
                 // Show loading state while playlist is being fetched
                 if (playerState.playlist.isEmpty && playerState.isLoading) {
-                  return div(classes: "flex flex-col items-center justify-center min-h-[600px] space-y-8", [
+                  return const div(classes: "flex flex-col items-center justify-center min-h-[600px] space-y-8", [
                     div(classes: "relative", [
                       div(classes: "w-32 h-32 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin", []),
                       div(classes: "absolute inset-0 w-32 h-32 border-4 border-pink-500/20 border-b-pink-500 rounded-full animate-spin animation-delay-1000", []),
@@ -90,7 +90,7 @@ class PlayerComponent extends StatelessComponent {
         ),
 
         // About Section integrated into Single Page
-        section(classes: "mt-32 pt-24 border-t border-white/5", [
+        const section(classes: "mt-32 pt-24 border-t border-white/5", [
           div(classes: "max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 text-white/40", [
             div(classes: "space-y-6", [
               h2(classes: "text-2xl font-black text-white px-2", [Component.text("About")]),

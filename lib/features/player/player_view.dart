@@ -61,6 +61,7 @@ class _YouTubePlayerState extends State<YouTubePlayer> {
   bool _isSearchOpen = false;
   String _tempSearchQuery = '';
   int _activeTab = 0; // 0 for Playlist, 1 for Library
+  double? _dragValue;
 
   @override
   Component build(BuildContext context) {
@@ -68,6 +69,9 @@ class _YouTubePlayerState extends State<YouTubePlayer> {
 
     final isLiveStream = component.duration == 0 && component.currentTime > 0;
     final isFavorite = currentTrack != null && component.favorites.any((t) => t.youtubeId == currentTrack.youtubeId);
+
+    // Use local drag value if dragging, otherwise use component.currentTime
+    final progressValue = _dragValue ?? component.currentTime;
 
     return div(
       classes: 'max-w-5xl mx-auto space-y-8 animate-in fade-in duration-700',
@@ -95,7 +99,14 @@ class _YouTubePlayerState extends State<YouTubePlayer> {
                 div(classes: 'flex justify-between items-center mb-12 relative', [
                   div(classes: 'flex items-center gap-3', [
                     button(
-                      events: {'click': (e) => component.onToggleFavorite(currentTrack)},
+                      key: ValueKey('fav-btn-${currentTrack.youtubeId}'),
+                      events: {
+                        'click': (dynamic e) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          component.onToggleFavorite(currentTrack);
+                        },
+                      },
                       classes: 'p-3 rounded-2xl transition-all ${isFavorite ? 'bg-red-500/10 text-red-500 border border-red-500/20 shadow-lg shadow-red-500/10' : 'bg-white/5 text-white/30 hover:text-white border border-white/5'}',
                       [
                         Heart(width: const Unit.pixels(20), height: const Unit.pixels(20), attributes: {'fill': isFavorite ? 'currentColor' : 'none'}),
@@ -185,19 +196,27 @@ class _YouTubePlayerState extends State<YouTubePlayer> {
                       attributes: {
                         'min': '0',
                         'max': component.duration.toString(),
-                        'value': component.currentTime.toString(),
+                        'value': progressValue.toString(),
                         'step': '0.1',
                       },
                       events: {
+                        // Visual update only on drag/input
                         'input': (dynamic e) {
                           if (isLiveStream || component.duration <= 0) return;
-                          final val = double.tryParse((e.target as web.HTMLInputElement).value) ?? 0;
+                          final val = double.tryParse((e.target as dynamic).value) ?? 0;
+                          setState(() => _dragValue = val);
+                        },
+                        // Commit seek on release/change
+                        'change': (dynamic e) {
+                          if (isLiveStream || component.duration <= 0) return;
+                          final val = double.tryParse((e.target as dynamic).value) ?? 0;
                           component.onSeek(val);
+                          setState(() => _dragValue = null);
                         },
                       },
                     ),
                     div(classes: 'flex justify-between mt-4 text-[11px] font-black tracking-widest text-white/30 uppercase font-mono', [
-                      span([Component.text(_formatTime(component.currentTime))]),
+                      span([Component.text(_formatTime(progressValue))]),
                       if (!isLiveStream) span([Component.text(_formatTime(component.duration))]),
                     ]),
                   ]),
@@ -236,7 +255,7 @@ class _YouTubePlayerState extends State<YouTubePlayer> {
                         attributes: {'min': '0', 'max': '100', 'value': '${(component.volume * 100).toInt()}'},
                         events: {
                           'input': (dynamic e) {
-                            final val = double.tryParse((e.target as web.HTMLInputElement).value) ?? 100;
+                            final val = double.tryParse((e.target as dynamic).value) ?? 100;
                             component.onVolumeChange(val / 100);
                           },
                         },
@@ -282,7 +301,19 @@ class _YouTubePlayerState extends State<YouTubePlayer> {
                         const p(classes: 'text-sm font-medium', [Component.text('Your library is empty. Heart a track to save it.')]),
                       ])
                     else
-                      for (var i = 0; i < component.favorites.length; i++) _buildTrackItem(i, component.favorites[i], currentTrack.youtubeId == component.favorites[i].youtubeId, true),
+                      div(classes: 'space-y-2', [
+                        div(classes: 'px-2 pb-2', [
+                          button(
+                            classes: 'w-full py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 rounded-xl text-xs font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2',
+                            events: {'click': (e) => component.onPlayFavorite(0)},
+                            [
+                              Play(width: const Unit.pixels(14), height: const Unit.pixels(14)),
+                              const Component.text('Play All Favorites'),
+                            ],
+                          ),
+                        ]),
+                        for (var i = 0; i < component.favorites.length; i++) _buildTrackItem(i, component.favorites[i], currentTrack.youtubeId == component.favorites[i].youtubeId, true),
+                      ]),
                   ]),
                 ]),
               ]),
