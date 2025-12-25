@@ -21,9 +21,6 @@ class YouTubePlayerController extends Notifier<YouTubePlayerState> {
   /// Public methods that interact with the player should `await` this future.
   Future<void>? _playerReadyFuture;
 
-  /// Track if we've had user interaction
-  bool _hasUserInteraction = false;
-
   @override
   YouTubePlayerState build() {
     ref.onDispose(() async {
@@ -32,7 +29,7 @@ class YouTubePlayerController extends Notifier<YouTubePlayerState> {
       await destroyVideoPlayer().toDart;
     });
 
-    final initialPlaylist = ref.watch(intialPlayListProvider);
+    final initialPlaylistAsync = ref.watch(intialPlayListProvider);
 
     // Initialize player after build
     Future.microtask(() => _initializeAndCreatePlayer());
@@ -40,7 +37,15 @@ class YouTubePlayerController extends Notifier<YouTubePlayerState> {
     // Load favorites from local storage
     Future.microtask(() => _loadFavorites());
 
-    return YouTubePlayerState(playlist: initialPlaylist);
+    return YouTubePlayerState(
+      playlist: initialPlaylistAsync.when(
+        data: (playlist) => playlist,
+        loading: () => [],
+        error: (_, _) => [],
+      ),
+      isLoading: initialPlaylistAsync.isLoading,
+      autoPlay: true, // Auto-play enabled by default
+    );
   }
 
   static const String _favoritesKey = 'lofime_favorites';
@@ -94,7 +99,26 @@ class YouTubePlayerController extends Notifier<YouTubePlayerState> {
     _loadTrack(index);
   }
 
+  void jumpToTrack(int index) {
+    if (index < 0 || index >= state.playlist.length) return;
+    _loadTrack(index);
+  }
+
+  bool _isInitialized = false;
+
   void _initializeAndCreatePlayer() {
+    if (_isInitialized) {
+      // If we are already initialized but don't have a player yet, try to create it if we have a track now.
+      if (_playerReadyFuture == null) {
+        final videoId = state.currentTrack?.youtubeId;
+        if (videoId != null) {
+          _createPlayer(videoId);
+        }
+      }
+      return;
+    }
+
+    _isInitialized = true;
     final options = JsPlayerOptions(
       onReady: _onPlayerReady.toJS,
       onStateChange: _onPlayerStateChange.toJS,
@@ -106,21 +130,29 @@ class YouTubePlayerController extends Notifier<YouTubePlayerState> {
     // Create the player with the first video.
     final videoId = state.currentTrack?.youtubeId;
     if (videoId != null) {
-      _talker.info('Dart: Calling createPlayer for initial track $videoId');
-      // createPlayer returns a Future that completes when the player is ready.
-      // We store this future to be awaited by other methods.
-      _playerReadyFuture = createPlayer(videoId).toDart;
-      _playerReadyFuture!
-          .then((_) {
-            _talker.info('Dart: Initial player is ready. Setting volume.');
-            setVideoVolume(state.volume);
-            // Don't auto-play on initialization - wait for user interaction
-          })
-          .catchError((e, st) {
-            _talker.error('Dart: Failed to create initial player', e, st);
-            _playerReadyFuture = null; // Invalidate the future on error.
-          });
+      _createPlayer(videoId);
     }
+  }
+
+  void _createPlayer(String videoId) {
+    _talker.info('Dart: Calling createPlayer for track $videoId');
+    _playerReadyFuture = createPlayer(videoId).toDart;
+    _playerReadyFuture!
+        .then((_) {
+          _talker.info('Dart: Player is ready. Setting volume.');
+          setVideoVolume(state.volume);
+          // Auto-play if enabled
+          if (state.autoPlay) {
+            _talker.info('Dart: Auto-play is enabled, attempting to play.');
+            // We initiate play. If it succeeds (browser allows), _onPlayerStateChange(1) will update isPlaying.
+            // If it's blocked, isPlaying remains false, showing the "Click to Start" overlay in HomePage.
+            playVideo();
+          }
+        })
+        .catchError((e, st) {
+          _talker.error('Dart: Failed to create player', e, st);
+          _playerReadyFuture = null;
+        });
   }
 
   // --- Callbacks from JavaScript ---
@@ -137,7 +169,7 @@ class YouTubePlayerController extends Notifier<YouTubePlayerState> {
         break;
       case 0: // ENDED
         _talker.info('Player ended');
-        if (state.autoPlay && _hasUserInteraction) {
+        if (state.autoPlay) {
           next();
         } else {
           state = state.copyWith(isPlaying: false);
@@ -189,7 +221,6 @@ class YouTubePlayerController extends Notifier<YouTubePlayerState> {
 
   Future<void> play() async {
     _talker.info('play() called.');
-    _hasUserInteraction = true;
 
     if (_playerReadyFuture == null) {
       _talker.warning('Play called but player is not initialized.');
@@ -339,9 +370,9 @@ class YouTubePlayerController extends Notifier<YouTubePlayerState> {
       await _playerReadyFuture!;
       _talker.info('Loading video ${track.youtubeId}');
       loadVideo(track.youtubeId);
-      // Volume is preserved by the YT player usually, but we can set it again
       setVideoVolume(state.volume);
-      if (state.isPlaying) {
+      if (state.isPlaying || state.autoPlay) {
+        _talker.info('Attempting to start playback for new track.');
         playVideo();
       }
     } catch (e, st) {
@@ -355,7 +386,17 @@ final youTubePlayerProvider = NotifierProvider.autoDispose<YouTubePlayerControll
   YouTubePlayerController.new,
 );
 
-final intialPlayListProvider = Provider.autoDispose<List<YouTubeTrack>>((ref) {
+final intialPlayListProvider = FutureProvider.autoDispose<List<YouTubeTrack>>((ref) async {
+  try {
+    final results = await ref.read(youtubeMusicServiceProvider).searchLofi('amtee');
+    if (results.isNotEmpty) {
+      return results;
+    }
+  } catch (e) {
+    // Fallback to default playlist if search fails
+  }
+
+  // Fallback playlist
   return [
     const YouTubeTrack(
       title: "Lofi Bollywood Mix 2024 | Chill Hindi Songs",
@@ -366,42 +407,6 @@ final intialPlayListProvider = Provider.autoDispose<List<YouTubeTrack>>((ref) {
     const YouTubeTrack(
       title: "Best of Bollywood LoFi | Relaxing Hindi Music",
       artist: "Chill Bollywood",
-      url: "",
-      youtubeId: "36YnV9STBqc",
-    ),
-    const YouTubeTrack(
-      title: "Arijit Singh LoFi Mix | Romantic Hindi Songs",
-      artist: "LoFi Romance",
-      url: "",
-      youtubeId: "kJQP7kiw5Fk",
-    ),
-    const YouTubeTrack(
-      title: "90s Bollywood LoFi | Nostalgic Hindi Hits",
-      artist: "Retro LoFi",
-      url: "",
-      youtubeId: "4NRXx6U8ABQ",
-    ),
-    const YouTubeTrack(
-      title: "Rahat Fateh Ali Khan LoFi | Sufi Chill Mix",
-      artist: "Sufi LoFi",
-      url: "",
-      youtubeId: "kTJczUoc26U",
-    ),
-    const YouTubeTrack(
-      title: "Bollywood Study Music | Focus LoFi Beats",
-      artist: "Study Beats India",
-      url: "",
-      youtubeId: "5qap5aO4i9A",
-    ),
-    const YouTubeTrack(
-      title: "Kishore Kumar LoFi | Classic Hindi Songs",
-      artist: "Classic LoFi",
-      url: "",
-      youtubeId: "kJQP7kiw5Fk",
-    ),
-    const YouTubeTrack(
-      title: "Lata Mangeshkar LoFi | Golden Era Hindi Music",
-      artist: "Golden LoFi",
       url: "",
       youtubeId: "36YnV9STBqc",
     ),

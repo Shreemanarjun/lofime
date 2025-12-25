@@ -36,6 +36,7 @@ void main() {
           onAutoDiscover: () {},
           onToggleFavorite: (_) {},
           onPlayFavorite: (_) {},
+          onJumpToTrack: (_) {},
         ),
       );
 
@@ -66,6 +67,7 @@ void main() {
           onAutoDiscover: () {},
           onToggleFavorite: (_) {},
           onPlayFavorite: (_) {},
+          onJumpToTrack: (_) {},
         ),
       );
 
