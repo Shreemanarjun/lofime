@@ -2,13 +2,14 @@ import 'dart:js_interop';
 import 'dart:async';
 
 import 'package:jaspr_riverpod/jaspr_riverpod.dart';
-import 'package:lofime/data/local_player_model.dart';
-import 'package:lofime/feature/yt_player/controller/yt_player_interop.dart';
+import 'package:lofime/core/models/player_models.dart';
+import 'package:lofime/core/services/youtube_music_service.dart';
+import 'package:lofime/features/player/controller/player_interop.dart';
 
 import 'package:talker/talker.dart';
 
-/// StateNotifier to control the player
-class YouTubePlayerController extends AutoDisposeNotifier<YouTubePlayerState> {
+/// Controller to manage the YouTube player
+class YouTubePlayerController extends Notifier<YouTubePlayerState> {
   // A logger for debugging.
   final _talker = Talker(
     settings: TalkerSettings(),
@@ -29,13 +30,10 @@ class YouTubePlayerController extends AutoDisposeNotifier<YouTubePlayerState> {
       await destroyVideoPlayer().toDart;
     });
 
-    ref.onAddListener(() {
-      _talker.info('YouTubePlayerController added. Initializing player...');
-      _initializeAndCreatePlayer();
-    });
-
     final initialPlaylist = ref.watch(intialPlayListProvider);
-    // Player starts in a paused state, waiting for user interaction.
+
+    // Initialize player after build
+    Future.microtask(() => _initializeAndCreatePlayer());
 
     return YouTubePlayerState(playlist: initialPlaylist);
   }
@@ -70,8 +68,6 @@ class YouTubePlayerController extends AutoDisposeNotifier<YouTubePlayerState> {
   // --- Callbacks from JavaScript ---
 
   void _onPlayerReady() {
-    // This callback is now mostly for logging, as the `createPlayer` promise
-    // is the primary signal for readiness.
     _talker.info('Dart: JS onReady event fired.');
   }
 
@@ -135,11 +131,8 @@ class YouTubePlayerController extends AutoDisposeNotifier<YouTubePlayerState> {
 
   Future<void> play() async {
     _talker.info('play() called.');
-
-    // Mark that we have user interaction
     _hasUserInteraction = true;
 
-    // Wait for player to be ready
     if (_playerReadyFuture == null) {
       _talker.warning('Play called but player is not initialized.');
       return;
@@ -149,22 +142,15 @@ class YouTubePlayerController extends AutoDisposeNotifier<YouTubePlayerState> {
       await _playerReadyFuture!;
       _talker.info('Player is ready, calling playVideo()');
       playVideo();
-
-      // Update state immediately to show playing status
       state = state.copyWith(isPlaying: true);
     } catch (e, st) {
       _talker.error('Failed to play video', e, st);
-      state = state.copyWith(isPlaying: false);
     }
   }
 
   Future<void> pause() async {
     _talker.info('pause() called.');
-
-    if (_playerReadyFuture == null) {
-      _talker.warning('Pause called but player is not ready or failed to init.');
-      return;
-    }
+    if (_playerReadyFuture == null) return;
 
     try {
       await _playerReadyFuture!;
@@ -175,105 +161,133 @@ class YouTubePlayerController extends AutoDisposeNotifier<YouTubePlayerState> {
     }
   }
 
+  Future<void> stop() async {
+    _talker.info('stop() called.');
+    if (_playerReadyFuture == null) return;
+
+    try {
+      await _playerReadyFuture!;
+      // Note: stopVideo is not in interop, usually pause + seek(0)
+      pauseVideo();
+      seekVideo(0);
+      state = state.copyWith(isPlaying: false, currentTime: 0);
+    } catch (e, st) {
+      _talker.error('Failed to stop video', e, st);
+    }
+  }
+
   Future<void> next() async {
     _talker.info('next() called.');
-    _hasUserInteraction = true; // Mark user interaction
-
-    if (state.playlist.isNotEmpty) {
-      final nextIndex = (state.currentTrackIndex + 1) % state.playlist.length;
-      await selectTrack(nextIndex);
+    int nextIndex = state.currentTrackIndex + 1;
+    if (nextIndex >= state.playlist.length) {
+      nextIndex = 0;
     }
+    await _loadTrack(nextIndex);
   }
 
   Future<void> previous() async {
     _talker.info('previous() called.');
-    _hasUserInteraction = true; // Mark user interaction
-
-    if (state.playlist.isNotEmpty) {
-      final prevIndex = state.currentTrackIndex == 0 ? state.playlist.length - 1 : state.currentTrackIndex - 1;
-      await selectTrack(prevIndex);
+    int prevIndex = state.currentTrackIndex - 1;
+    if (prevIndex < 0) {
+      prevIndex = state.playlist.length - 1;
     }
+    await _loadTrack(prevIndex);
   }
 
   Future<void> setVolume(double volume) async {
-    _talker.info('setVolume() called with: $volume');
-    final clampedVolume = volume.clamp(0.0, 1.0);
-    state = state.copyWith(volume: clampedVolume);
+    _talker.info('setVolume($volume) called.');
+    state = state.copyWith(volume: volume);
+    if (_playerReadyFuture == null) return;
 
-    // Await readiness before sending command to JS
-    if (_playerReadyFuture != null) {
-      try {
-        await _playerReadyFuture!;
-        setVideoVolume(clampedVolume);
-      } catch (e, st) {
-        _talker.error('Failed to set volume', e, st);
-      }
+    try {
+      await _playerReadyFuture!;
+      setVideoVolume(volume);
+    } catch (e, st) {
+      _talker.error('Failed to set volume', e, st);
     }
-  }
-
-  Future<void> selectTrack(int index) async {
-    _talker.info('selectTrack() called with index: $index');
-    if (index >= 0 && index < state.playlist.length) {
-      final wasPlaying = state.isPlaying && _hasUserInteraction;
-
-      // Immediately update the UI to show the new track selection and pause state.
-      state = state.copyWith(
-        currentTrackIndex: index,
-        currentTime: 0,
-        duration: 0,
-        isPlaying: false,
-      );
-
-      final videoId = state.playlist[index].youtubeId;
-
-      // The JS `createPlayer` handles destroying the old player and creating a new one.
-      // We get a new future that represents the readiness of this new player instance.
-      _talker.info('Dart: Calling createPlayer for new track $videoId');
-
-      try {
-        final newPlayerFuture = createPlayer(videoId).toDart;
-        _playerReadyFuture = newPlayerFuture;
-
-        await newPlayerFuture;
-        _talker.info('Dart: Player for new track $videoId is ready.');
-
-        // New player is ready, re-apply settings and resume playback if needed.
-        setVideoVolume(state.volume);
-
-        // Only auto-play if we had user interaction and were previously playing
-        if (wasPlaying) {
-          // Small delay to ensure player is fully ready
-          await Future.delayed(const Duration(milliseconds: 100));
-          await play();
-        }
-      } catch (e, st) {
-        _talker.error('Dart: Failed to create player for track $videoId', e, st);
-        _playerReadyFuture = null; // Invalidate the future on error.
-        state = state.copyWith(isPlaying: false);
-      }
-    }
-  }
-
-  void toggleAutoPlay() {
-    _talker.info('toggleAutoPlay() called. New value: ${!state.autoPlay}');
-    state = state.copyWith(autoPlay: !state.autoPlay);
   }
 
   Future<void> seek(double time) async {
-    _talker.info('seek() called with time: $time');
-    _hasUserInteraction = true; // Mark user interaction
-
-    if (_playerReadyFuture == null || state.duration <= 0) {
-      _talker.warning('Cannot seek - player not ready or no duration');
-      return;
-    }
+    _talker.info('seek($time) called.');
+    if (_playerReadyFuture == null) return;
 
     try {
       await _playerReadyFuture!;
       seekVideo(time);
       state = state.copyWith(currentTime: time);
     } catch (e, st) {
-      _talker.error('Failed to seek video', e, st);
+      _talker.error('Failed to seek', e, st);
+    }
+  }
+
+  void toggleAutoPlay() {
+    _talker.info('toggleAutoPlay() called.');
+    state = state.copyWith(autoPlay: !state.autoPlay);
+  }
+
+  Future<void> search(String query) async {
+    if (query.isEmpty) return;
+    _talker.info('search($query) called.');
+    state = state.copyWith(isLoading: true, searchQuery: query);
+
+    final results = await ref.read(youtubeMusicServiceProvider).searchLofi(query);
+
+    if (results.isNotEmpty) {
+      state = state.copyWith(
+        playlist: results,
+        currentTrackIndex: 0,
+        isLoading: false,
+      );
+      await _loadTrack(0);
+    } else {
+      state = state.copyWith(isLoading: false);
+      _talker.warning('No search results found for: $query');
+    }
+  }
+
+  Future<void> autoDiscover() async {
+    _talker.info('autoDiscover() called.');
+    state = state.copyWith(isLoading: true);
+
+    final results = await ref.read(youtubeMusicServiceProvider).discoverLofi();
+
+    if (results.isNotEmpty) {
+      state = state.copyWith(
+        playlist: results,
+        currentTrackIndex: 0,
+        isLoading: false,
+      );
+      await _loadTrack(0);
+    } else {
+      state = state.copyWith(isLoading: false);
+      _talker.warning('Discovery failed to return tracks.');
+    }
+  }
+
+  Future<void> _loadTrack(int index) async {
+    _talker.info('_loadTrack($index) called.');
+    if (index < 0 || index >= state.playlist.length) return;
+
+    final track = state.playlist[index];
+    state = state.copyWith(currentTrackIndex: index, currentTime: 0, duration: 0);
+
+    if (_playerReadyFuture == null) {
+      _talker.warning('Player not ready during _loadTrack. Attempting re-init.');
+      _initializeAndCreatePlayer();
+      return;
+    }
+
+    try {
+      await _playerReadyFuture!;
+      _talker.info('Loading video ${track.youtubeId}');
+      loadVideo(track.youtubeId);
+      // Volume is preserved by the YT player usually, but we can set it again
+      setVideoVolume(state.volume);
+      if (state.isPlaying) {
+        playVideo();
+      }
+    } catch (e, st) {
+      _talker.error('Failed to load track', e, st);
     }
   }
 }

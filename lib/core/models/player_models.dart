@@ -1,6 +1,6 @@
 // Track sealed class
 import 'package:dart_mappable/dart_mappable.dart';
-part 'local_player_model.mapper.dart';
+part 'player_models.mapper.dart';
 
 @MappableClass()
 sealed class Track with TrackMappable {
@@ -82,6 +82,8 @@ class YouTubePlayerState with YouTubePlayerStateMappable {
   final bool autoPlay;
   final double currentTime;
   final double duration;
+  final bool isLoading;
+  final String searchQuery;
 
   const YouTubePlayerState({
     this.playlist = const [],
@@ -91,6 +93,8 @@ class YouTubePlayerState with YouTubePlayerStateMappable {
     this.autoPlay = true,
     this.currentTime = 0,
     this.duration = 0,
+    this.isLoading = false,
+    this.searchQuery = '',
   });
 
   YouTubeTrack? get currentTrack => playlist.isNotEmpty && currentTrackIndex < playlist.length ? playlist[currentTrackIndex] : null;

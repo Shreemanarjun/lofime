@@ -5,7 +5,7 @@
 // ignore_for_file: unused_element, unnecessary_cast, override_on_non_overriding_member
 // ignore_for_file: strict_raw_type, inference_failure_on_untyped_parameter
 
-part of 'local_player_model.dart';
+part of 'player_models.dart';
 
 class TrackMapper extends ClassMapperBase<Track> {
   TrackMapper._();
@@ -811,11 +811,19 @@ class YouTubePlayerStateMapper extends ClassMapperBase<YouTubePlayerState> {
     opt: true,
     def: 0,
   );
-  static YouTubeTrack? _$currentTrack(YouTubePlayerState v) => v.currentTrack;
-  static const Field<YouTubePlayerState, YouTubeTrack> _f$currentTrack = Field(
-    'currentTrack',
-    _$currentTrack,
-    mode: FieldMode.member,
+  static bool _$isLoading(YouTubePlayerState v) => v.isLoading;
+  static const Field<YouTubePlayerState, bool> _f$isLoading = Field(
+    'isLoading',
+    _$isLoading,
+    opt: true,
+    def: false,
+  );
+  static String _$searchQuery(YouTubePlayerState v) => v.searchQuery;
+  static const Field<YouTubePlayerState, String> _f$searchQuery = Field(
+    'searchQuery',
+    _$searchQuery,
+    opt: true,
+    def: '',
   );
 
   @override
@@ -827,7 +835,8 @@ class YouTubePlayerStateMapper extends ClassMapperBase<YouTubePlayerState> {
     #autoPlay: _f$autoPlay,
     #currentTime: _f$currentTime,
     #duration: _f$duration,
-    #currentTrack: _f$currentTrack,
+    #isLoading: _f$isLoading,
+    #searchQuery: _f$searchQuery,
   };
 
   static YouTubePlayerState _instantiate(DecodingData data) {
@@ -839,6 +848,8 @@ class YouTubePlayerStateMapper extends ClassMapperBase<YouTubePlayerState> {
       autoPlay: data.dec(_f$autoPlay),
       currentTime: data.dec(_f$currentTime),
       duration: data.dec(_f$duration),
+      isLoading: data.dec(_f$isLoading),
+      searchQuery: data.dec(_f$searchQuery),
     );
   }
 
@@ -927,6 +938,8 @@ abstract class YouTubePlayerStateCopyWith<
     bool? autoPlay,
     double? currentTime,
     double? duration,
+    bool? isLoading,
+    String? searchQuery,
   });
   YouTubePlayerStateCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(
     Then<$Out2, $R2> t,
@@ -961,6 +974,8 @@ class _YouTubePlayerStateCopyWithImpl<$R, $Out>
     bool? autoPlay,
     double? currentTime,
     double? duration,
+    bool? isLoading,
+    String? searchQuery,
   }) => $apply(
     FieldCopyWithData({
       if (playlist != null) #playlist: playlist,
@@ -970,6 +985,8 @@ class _YouTubePlayerStateCopyWithImpl<$R, $Out>
       if (autoPlay != null) #autoPlay: autoPlay,
       if (currentTime != null) #currentTime: currentTime,
       if (duration != null) #duration: duration,
+      if (isLoading != null) #isLoading: isLoading,
+      if (searchQuery != null) #searchQuery: searchQuery,
     }),
   );
   @override
@@ -984,6 +1001,8 @@ class _YouTubePlayerStateCopyWithImpl<$R, $Out>
     autoPlay: data.get(#autoPlay, or: $value.autoPlay),
     currentTime: data.get(#currentTime, or: $value.currentTime),
     duration: data.get(#duration, or: $value.duration),
+    isLoading: data.get(#isLoading, or: $value.isLoading),
+    searchQuery: data.get(#searchQuery, or: $value.searchQuery),
   );
 
   @override

@@ -1,12 +1,13 @@
 import 'package:jaspr/jaspr.dart';
+import 'package:jaspr/dom.dart';
 import 'package:jaspr_riverpod/jaspr_riverpod.dart';
 import 'package:jaspr_router/jaspr_router.dart';
 import 'package:talker/talker.dart';
 import 'package:talker_riverpod_logger/talker_riverpod_logger_observer.dart';
 import 'package:talker_riverpod_logger/talker_riverpod_logger_settings.dart';
 
-import 'pages/about.dart';
-import 'pages/home.dart';
+import 'pages/about_page.dart';
+import 'pages/home_page.dart';
 
 final container = ProviderContainer();
 final talker = Talker();
@@ -21,7 +22,6 @@ class App extends StatelessComponent {
 
     // Renders a <div class="main"> html element with children.
     return ProviderScope(
-      parent: container,
       observers: [
         TalkerRiverpodObserver(
           talker: talker,
@@ -35,7 +35,7 @@ class App extends StatelessComponent {
         [
           Router(routes: [
             ShellRoute(
-              builder: (context, state, child) => fragment([
+              builder: (context, state, child) => Component.fragment([
                 // const Header(),
                 child,
               ]),
