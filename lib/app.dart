@@ -1,12 +1,9 @@
 import 'package:jaspr/jaspr.dart';
 import 'package:jaspr/dom.dart';
 import 'package:jaspr_riverpod/jaspr_riverpod.dart';
-import 'package:jaspr_router/jaspr_router.dart';
 import 'package:talker/talker.dart';
 import 'package:talker_riverpod_logger/talker_riverpod_logger_observer.dart';
 import 'package:talker_riverpod_logger/talker_riverpod_logger_settings.dart';
-
-import 'pages/about_page.dart';
 import 'pages/home_page.dart';
 
 final container = ProviderContainer();
@@ -30,21 +27,10 @@ class App extends StatelessComponent {
           ),
         ),
       ],
-      child: div(
+      child: const div(
         classes: 'main',
         [
-          Router(routes: [
-            ShellRoute(
-              builder: (context, state, child) => Component.fragment([
-                // const Header(),
-                child,
-              ]),
-              routes: [
-                Route(path: '/', title: 'Home', builder: (context, state) => const Home()),
-                Route(path: '/about', title: 'About', builder: (context, state) => const About()),
-              ],
-            ),
-          ]),
+          Home(),
         ],
       ),
     );

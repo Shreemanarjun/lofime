@@ -7,6 +7,8 @@ import 'package:lofime/core/services/youtube_music_service.dart';
 import 'package:lofime/features/player/controller/player_interop.dart';
 
 import 'package:talker/talker.dart';
+import 'package:universal_web/web.dart' as web;
+import 'dart:convert';
 
 /// Controller to manage the YouTube player
 class YouTubePlayerController extends Notifier<YouTubePlayerState> {
@@ -35,7 +37,61 @@ class YouTubePlayerController extends Notifier<YouTubePlayerState> {
     // Initialize player after build
     Future.microtask(() => _initializeAndCreatePlayer());
 
+    // Load favorites from local storage
+    Future.microtask(() => _loadFavorites());
+
     return YouTubePlayerState(playlist: initialPlaylist);
+  }
+
+  static const String _favoritesKey = 'lofime_favorites';
+
+  void _loadFavorites() {
+    try {
+      final saved = web.window.localStorage.getItem(_favoritesKey);
+      if (saved != null) {
+        final List<dynamic> json = jsonDecode(saved);
+        final favs = json.map((e) => YouTubeTrackMapper.fromMap(e as Map<String, dynamic>)).toList();
+        state = state.copyWith(favorites: favs);
+        _talker.info('Loaded ${favs.length} favorites from local storage');
+      }
+    } catch (e) {
+      _talker.error('Failed to load favorites', e);
+    }
+  }
+
+  void _saveFavorites() {
+    try {
+      final json = state.favorites.map((e) => e.toMap()).toList();
+      web.window.localStorage.setItem(_favoritesKey, jsonEncode(json));
+    } catch (e) {
+      _talker.error('Failed to save favorites', e);
+    }
+  }
+
+  void toggleFavorite(YouTubeTrack track) {
+    final isFav = state.isFavorite(track.youtubeId);
+    if (isFav) {
+      state = state.copyWith(
+        favorites: state.favorites.where((t) => t.youtubeId != track.youtubeId).toList(),
+      );
+    } else {
+      state = state.copyWith(
+        favorites: [...state.favorites, track],
+      );
+    }
+    _saveFavorites();
+  }
+
+  void playFavorite(int index) {
+    if (index < 0 || index >= state.favorites.length) return;
+
+    // Switch main playlist to favorites if we play from there?
+    // Or just play it. Let's make the favorites a playable list.
+    state = state.copyWith(
+      playlist: state.favorites,
+      currentTrackIndex: index,
+    );
+    _loadTrack(index);
   }
 
   void _initializeAndCreatePlayer() {
@@ -54,14 +110,16 @@ class YouTubePlayerController extends Notifier<YouTubePlayerState> {
       // createPlayer returns a Future that completes when the player is ready.
       // We store this future to be awaited by other methods.
       _playerReadyFuture = createPlayer(videoId).toDart;
-      _playerReadyFuture!.then((_) {
-        _talker.info('Dart: Initial player is ready. Setting volume.');
-        setVideoVolume(state.volume);
-        // Don't auto-play on initialization - wait for user interaction
-      }).catchError((e, st) {
-        _talker.error('Dart: Failed to create initial player', e, st);
-        _playerReadyFuture = null; // Invalidate the future on error.
-      });
+      _playerReadyFuture!
+          .then((_) {
+            _talker.info('Dart: Initial player is ready. Setting volume.');
+            setVideoVolume(state.volume);
+            // Don't auto-play on initialization - wait for user interaction
+          })
+          .catchError((e, st) {
+            _talker.error('Dart: Failed to create initial player', e, st);
+            _playerReadyFuture = null; // Invalidate the future on error.
+          });
     }
   }
 

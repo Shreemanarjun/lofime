@@ -14,50 +14,60 @@ void main() {
         ),
       ];
 
-      tester.pumpComponent(YouTubePlayer(
-        playlist: tracks,
-        currentTrackIndex: 0,
-        isPlaying: false,
-        volume: 0.5,
-        currentTime: 0,
-        duration: 200,
-        isLoading: false,
-        onNext: () {},
-        onPrevious: () {},
-        onVolumeChange: (_) {},
-        onPlay: () {},
-        onPause: () {},
-        autoPlay: true,
-        onToggleAutoPlay: () {},
-        onSeek: (_) {},
-        onSearch: (_) {},
-        onAutoDiscover: () {},
-      ));
+      tester.pumpComponent(
+        YouTubePlayer(
+          playlist: tracks,
+          favorites: const [],
+          currentTrackIndex: 0,
+          isPlaying: false,
+          volume: 0.5,
+          currentTime: 0,
+          duration: 200,
+          isLoading: false,
+          onNext: () {},
+          onPrevious: () {},
+          onVolumeChange: (_) {},
+          onPlay: () {},
+          onPause: () {},
+          autoPlay: true,
+          onToggleAutoPlay: () {},
+          onSeek: (_) {},
+          onSearch: (_) {},
+          onAutoDiscover: () {},
+          onToggleFavorite: (_) {},
+          onPlayFavorite: (_) {},
+        ),
+      );
 
       expect(find.text('Test Song'), findsComponents);
       expect(find.text('Test Artist'), findsComponents);
     });
 
     testComponents('renders empty state when playlist is empty', (tester) async {
-      tester.pumpComponent(YouTubePlayer(
-        playlist: const [],
-        currentTrackIndex: 0,
-        isPlaying: false,
-        volume: 0.5,
-        currentTime: 0,
-        duration: 0,
-        isLoading: false,
-        onNext: () {},
-        onPrevious: () {},
-        onVolumeChange: (_) {},
-        onPlay: () {},
-        onPause: () {},
-        autoPlay: true,
-        onToggleAutoPlay: () {},
-        onSeek: (_) {},
-        onSearch: (_) {},
-        onAutoDiscover: () {},
-      ));
+      tester.pumpComponent(
+        YouTubePlayer(
+          playlist: const [],
+          favorites: const [],
+          currentTrackIndex: 0,
+          isPlaying: false,
+          volume: 0.5,
+          currentTime: 0,
+          duration: 0,
+          isLoading: false,
+          onNext: () {},
+          onPrevious: () {},
+          onVolumeChange: (_) {},
+          onPlay: () {},
+          onPause: () {},
+          autoPlay: true,
+          onToggleAutoPlay: () {},
+          onSeek: (_) {},
+          onSearch: (_) {},
+          onAutoDiscover: () {},
+          onToggleFavorite: (_) {},
+          onPlayFavorite: (_) {},
+        ),
+      );
 
       expect(find.text('Your stage is empty'), findsOneComponent);
     });

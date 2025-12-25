@@ -76,6 +76,7 @@ final class YouTubePlaylist extends Playlist with YouTubePlaylistMappable {
 @MappableClass()
 class YouTubePlayerState with YouTubePlayerStateMappable {
   final List<YouTubeTrack> playlist;
+  final List<YouTubeTrack> favorites;
   final int currentTrackIndex;
   final bool isPlaying;
   final double volume;
@@ -87,6 +88,7 @@ class YouTubePlayerState with YouTubePlayerStateMappable {
 
   const YouTubePlayerState({
     this.playlist = const [],
+    this.favorites = const [],
     this.currentTrackIndex = 0,
     this.isPlaying = false,
     this.volume = 0.7,
@@ -98,4 +100,6 @@ class YouTubePlayerState with YouTubePlayerStateMappable {
   });
 
   YouTubeTrack? get currentTrack => playlist.isNotEmpty && currentTrackIndex < playlist.length ? playlist[currentTrackIndex] : null;
+
+  bool isFavorite(String youtubeId) => favorites.any((t) => t.youtubeId == youtubeId);
 }

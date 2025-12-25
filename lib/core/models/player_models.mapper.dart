@@ -769,6 +769,9 @@ class YouTubePlayerStateMapper extends ClassMapperBase<YouTubePlayerState> {
   static List<YouTubeTrack> _$playlist(YouTubePlayerState v) => v.playlist;
   static const Field<YouTubePlayerState, List<YouTubeTrack>> _f$playlist =
       Field('playlist', _$playlist, opt: true, def: const []);
+  static List<YouTubeTrack> _$favorites(YouTubePlayerState v) => v.favorites;
+  static const Field<YouTubePlayerState, List<YouTubeTrack>> _f$favorites =
+      Field('favorites', _$favorites, opt: true, def: const []);
   static int _$currentTrackIndex(YouTubePlayerState v) => v.currentTrackIndex;
   static const Field<YouTubePlayerState, int> _f$currentTrackIndex = Field(
     'currentTrackIndex',
@@ -829,6 +832,7 @@ class YouTubePlayerStateMapper extends ClassMapperBase<YouTubePlayerState> {
   @override
   final MappableFields<YouTubePlayerState> fields = const {
     #playlist: _f$playlist,
+    #favorites: _f$favorites,
     #currentTrackIndex: _f$currentTrackIndex,
     #isPlaying: _f$isPlaying,
     #volume: _f$volume,
@@ -842,6 +846,7 @@ class YouTubePlayerStateMapper extends ClassMapperBase<YouTubePlayerState> {
   static YouTubePlayerState _instantiate(DecodingData data) {
     return YouTubePlayerState(
       playlist: data.dec(_f$playlist),
+      favorites: data.dec(_f$favorites),
       currentTrackIndex: data.dec(_f$currentTrackIndex),
       isPlaying: data.dec(_f$isPlaying),
       volume: data.dec(_f$volume),
@@ -930,8 +935,15 @@ abstract class YouTubePlayerStateCopyWith<
     YouTubeTrackCopyWith<$R, YouTubeTrack, YouTubeTrack>
   >
   get playlist;
+  ListCopyWith<
+    $R,
+    YouTubeTrack,
+    YouTubeTrackCopyWith<$R, YouTubeTrack, YouTubeTrack>
+  >
+  get favorites;
   $R call({
     List<YouTubeTrack>? playlist,
+    List<YouTubeTrack>? favorites,
     int? currentTrackIndex,
     bool? isPlaying,
     double? volume,
@@ -966,8 +978,20 @@ class _YouTubePlayerStateCopyWithImpl<$R, $Out>
     (v) => call(playlist: v),
   );
   @override
+  ListCopyWith<
+    $R,
+    YouTubeTrack,
+    YouTubeTrackCopyWith<$R, YouTubeTrack, YouTubeTrack>
+  >
+  get favorites => ListCopyWith(
+    $value.favorites,
+    (v, t) => v.copyWith.$chain(t),
+    (v) => call(favorites: v),
+  );
+  @override
   $R call({
     List<YouTubeTrack>? playlist,
+    List<YouTubeTrack>? favorites,
     int? currentTrackIndex,
     bool? isPlaying,
     double? volume,
@@ -979,6 +1003,7 @@ class _YouTubePlayerStateCopyWithImpl<$R, $Out>
   }) => $apply(
     FieldCopyWithData({
       if (playlist != null) #playlist: playlist,
+      if (favorites != null) #favorites: favorites,
       if (currentTrackIndex != null) #currentTrackIndex: currentTrackIndex,
       if (isPlaying != null) #isPlaying: isPlaying,
       if (volume != null) #volume: volume,
@@ -992,6 +1017,7 @@ class _YouTubePlayerStateCopyWithImpl<$R, $Out>
   @override
   YouTubePlayerState $make(CopyWithData data) => YouTubePlayerState(
     playlist: data.get(#playlist, or: $value.playlist),
+    favorites: data.get(#favorites, or: $value.favorites),
     currentTrackIndex: data.get(
       #currentTrackIndex,
       or: $value.currentTrackIndex,
