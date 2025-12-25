@@ -101,9 +101,10 @@ class _YouTubePlayerState extends State<YouTubePlayer> {
                     button(
                       key: ValueKey('fav-btn-${currentTrack.youtubeId}'),
                       events: {
-                        'click': (dynamic e) {
-                          e.preventDefault();
-                          e.stopPropagation();
+                        'click': (e) {
+                          final event = e as web.Event;
+                          event.preventDefault();
+                          event.stopPropagation();
                           component.onToggleFavorite(currentTrack);
                         },
                       },
@@ -161,9 +162,9 @@ class _YouTubePlayerState extends State<YouTubePlayer> {
                           alt: currentTrack.title,
                           classes: 'w-full h-full object-cover grayscale-[0.2] hover:grayscale-0 transition-all duration-700',
                           events: {
-                            'error': (dynamic e) {
-                              final el = e.target as web.HTMLImageElement;
-                              el.src = 'https://img.youtube.com/vi/${currentTrack.youtubeId}/hqdefault.jpg';
+                            'error': (e) {
+                              final element = (e as web.Event).target as web.HTMLImageElement;
+                              element.src = 'https://img.youtube.com/vi/${currentTrack.youtubeId}/hqdefault.jpg';
                             },
                           },
                         ),
@@ -201,15 +202,17 @@ class _YouTubePlayerState extends State<YouTubePlayer> {
                       },
                       events: {
                         // Visual update only on drag/input
-                        'input': (dynamic e) {
+                        'input': (e) {
                           if (isLiveStream || component.duration <= 0) return;
-                          final val = double.tryParse((e.target as dynamic).value) ?? 0;
+                          final element = (e as web.Event).target as web.HTMLInputElement;
+                          final val = double.tryParse(element.value) ?? 0;
                           setState(() => _dragValue = val);
                         },
                         // Commit seek on release/change
-                        'change': (dynamic e) {
+                        'change': (e) {
                           if (isLiveStream || component.duration <= 0) return;
-                          final val = double.tryParse((e.target as dynamic).value) ?? 0;
+                          final element = (e as web.Event).target as web.HTMLInputElement;
+                          final val = double.tryParse(element.value) ?? 0;
                           component.onSeek(val);
                           setState(() => _dragValue = null);
                         },
@@ -254,8 +257,9 @@ class _YouTubePlayerState extends State<YouTubePlayer> {
                         classes: 'flex-1 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-white',
                         attributes: {'min': '0', 'max': '100', 'value': '${(component.volume * 100).toInt()}'},
                         events: {
-                          'input': (dynamic e) {
-                            final val = double.tryParse((e.target as dynamic).value) ?? 100;
+                          'input': (e) {
+                            final element = (e as web.Event).target as web.HTMLInputElement;
+                            final val = double.tryParse(element.value) ?? 100;
                             component.onVolumeChange(val / 100);
                           },
                         },
